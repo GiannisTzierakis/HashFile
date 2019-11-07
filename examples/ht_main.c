@@ -88,15 +88,15 @@ int main() {
     CALL_OR_DIE(HT_InsertEntry(indexDesc, record));
   }
 
-  printf("RUN PrintAllEntries\n");
-  int id = rand() % RECORDS_NUM;
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
+//  printf("RUN PrintAllEntries\n");
+//  int id = rand() % RECORDS_NUM;
+//  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id));
   //CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
 
-  printf("Delete Entry with id = %d\n" ,id);
-  CALL_OR_DIE(HT_DeleteEntry(indexDesc, id));
-  printf("Print Entry with id = %d\n", id);
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id)); // must print something like : Entry doesn't exist or nothing at all
+//  printf("Delete Entry with id = %d\n" ,id);
+//  CALL_OR_DIE(HT_DeleteEntry(indexDesc, id));
+//  printf("Print Entry with id = %d\n", id);
+//  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id)); // must print something like : Entry doesn't exist or nothing at all
 
   CALL_OR_DIE(HT_CloseFile(indexDesc));
   BF_Close();

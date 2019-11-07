@@ -67,7 +67,7 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int buckets) {
     memcpy(block_data+i*sizeof(int), &num, sizeof(int));
     BF_Block_SetDirty(block);
 
-    if(i%ints_per_block == ints_per_block-1)
+    if(i%ints_per_block == ints_per_block-1 && i!=buckets-1);
       CALL_BF(BF_UnpinBlock(block));
   }
   CALL_BF(BF_UnpinBlock(block));
@@ -172,7 +172,7 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   if(bucket==-1){
     CALL_BF(BF_AllocateBlock(file_desc, block));
     CALL_BF(BF_GetBlockCounter(file_desc, &bucket));
-    bucket-=1;
+    bucket--;
     CALL_BF(BF_GetBlock(file_desc, bucket, block));
     memcpy(hash_block_data+(hashcode%buckets_per_block)*sizeof(int), &bucket, sizeof(int));
     BF_Block_SetDirty(hash_block);
@@ -191,7 +191,53 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   }
   BF_UnpinBlock(hash_block);
 
+  memcpy(&next_block, block_data, sizeof(int));
+  while(next_block!=-1){
+    CALL_BF(BF_UnpinBlock(block));
+    BF_Block_Init(&block);
+    CALL_BF(BF_GetBlock(file_desc, next_block, block));
+    block_data=BF_Block_GetData(block);
+    memcpy(&next_block, block_data, sizeof(int));
+  }
 
+  memcpy(&number_of_records, block_data+sizeof(int), sizeof(int));
+  if(number_of_records==8){
+    BF_Block *new_block;
+    char *new_block_data;
+
+    BF_Block_Init(&new_block);
+    CALL_BF(BF_AllocateBlock(file_desc, new_block));
+
+    CALL_BF(BF_GetBlockCounter(file_desc, &next_block));
+    next_block--;
+    memcpy(block_data, &next_block, sizeof(int));
+    BF_Block_SetDirty(block);
+    CALL_BF(BF_UnpinBlock(block));
+
+    CALL_BF(BF_GetBlock(file_desc, next_block, new_block));
+    new_block_data=BF_Block_GetData(new_block);
+
+    next_block=-1;
+    memcpy(new_block_data, &next_block, sizeof(int));
+    number_of_records=0;
+    memcpy(new_block_data+sizeof(int), &number_of_records, sizeof(int));
+
+    BF_Block_SetDirty(new_block);
+    CALL_BF(BF_UnpinBlock(new_block));
+
+    BF_Block_Init(&block);
+    int last_block;
+    CALL_BF(BF_GetBlockCounter(file_desc, &last_block));
+    last_block--;
+    CALL_BF(BF_GetBlock(file_desc, last_block, block));
+    block_data=BF_Block_GetData(block);
+  }
+
+  memcpy(block_data+number_of_records*sizeof(Record)+2*sizeof(int), &record, sizeof(Record));
+  number_of_records++;
+  memcpy(block_data+sizeof(int), &number_of_records, sizeof(int));
+
+  BF_Block_SetDirty(block);
   CALL_BF(BF_UnpinBlock(block));
 
   return HT_OK;
