@@ -64,15 +64,23 @@ const char* cities[] = {
   }
 
 int main(void){
-  
+
   int indexDesc;
 
   BF_Init(LRU);
   CALL_OR_DIE(HT_Init());
-  
+
   CALL_OR_DIE(HT_CreateIndex(FILE_NAME,BUCKETS_NUM));
   CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc));
-  
+
+  Record record;
+  record.id=10;
+  memcpy(record.name, "Giorgos", sizeof(record.name));
+  memcpy(record.surname, "Michas", sizeof(record.surname));
+  memcpy(record.city, "Athens", sizeof(record.city));
+
+  CALL_OR_DIE(HT_InsertEntry(0, record));
+
   CALL_OR_DIE(HT_CloseFile(indexDesc));
 
   return 0;

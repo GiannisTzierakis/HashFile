@@ -65,7 +65,7 @@ const char* cities[] = {
 
 int main() {
   BF_Init(LRU);
-  
+
   CALL_OR_DIE(HT_Init());
 
   int indexDesc;
@@ -95,7 +95,7 @@ int main() {
 
   printf("Delete Entry with id = %d\n" ,id);
   CALL_OR_DIE(HT_DeleteEntry(indexDesc, id));
-  printf("Print Entry with id = %d\n", id); 
+  printf("Print Entry with id = %d\n", id);
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &id)); // must print something like : Entry doesn't exist or nothing at all
 
   CALL_OR_DIE(HT_CloseFile(indexDesc));
