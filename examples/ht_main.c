@@ -9,6 +9,7 @@
 #define BUCKETS_NUM 13  // you can change it if you want
 #define FILE_NAME "data.db"
 
+
 int *open_files;
 
 const char* names[] = {
