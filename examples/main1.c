@@ -80,7 +80,7 @@ int main(void){
   memcpy(record.city, "Athens", sizeof(record.city));
 
   CALL_OR_DIE(HT_InsertEntry(0, record));
-
+  CALL_OR_DIE(HT_DeleteEntry(0, 0));
   CALL_OR_DIE(HT_CloseFile(indexDesc));
 
   return 0;

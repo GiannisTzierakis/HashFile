@@ -11,7 +11,7 @@ extern int *open_files;
 #define CALL_BF(call)       \
 {                           \
   BF_ErrorCode code = call; \
-  if (code != BF_OK) {         \
+  if (code != BF_OK) {      \
     BF_PrintError(code);    \
     return HT_ERROR;        \
   }                         \
@@ -36,22 +36,21 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int buckets) {
   CALL_BF(BF_OpenFile(filename, &file_desc));
 
   // first block
-  BF_Block_Init(&first_block);        //at the first block we save imformations about the file
+  BF_Block_Init(&first_block);        //at the first block we save information about the file
   CALL_BF(BF_AllocateBlock(file_desc, first_block));
   CALL_BF(BF_GetBlock(file_desc, block_num, first_block));
   first_block_data = BF_Block_GetData(first_block);
 
   memcpy(first_block_data, "hash", sizeof(5*sizeof(char)));       //the first 5 bites have the word "hash" so we know it's a hashfile
-  num = buckets;
-  memcpy(first_block_data+5*sizeof(char), &num, sizeof(int));     //then we save the number of buckets we are using in the hashfile
+  // num = buckets;
+  memcpy(first_block_data+5*sizeof(char), &buckets, sizeof(int));     //then we save the number of buckets we are using in the hashfile
   records_per_block = (BF_BLOCK_SIZE-2*sizeof(int))/sizeof(Record);       //At each block we will save 2 (int) numbers, one for the number of records at the block and one in case we want to use overflow chains
   memcpy(first_block_data+5*sizeof(char)+sizeof(int), &records_per_block, sizeof(int));  //in the end of the block we save the number of records we can save in a block
 
   BF_Block_SetDirty(first_block);
   CALL_BF(BF_UnpinBlock(first_block));
 
-  // hash index
-
+  // hash index blocks
   num = -1;
   int ints_per_block = BF_BLOCK_SIZE/sizeof(int);
   for (int i = 0; i < buckets; i++) {
@@ -64,36 +63,17 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int buckets) {
 //      CALL_BF(BF_UnpinBlock(block))
     }
 
-    memcpy(block_data+i*sizeof(int), &num, sizeof(int));
+    memcpy(block_data+(i%ints_per_block)*sizeof(int), &num, sizeof(int));    // <--- block_data points in 2nd hash block so in memcpy: block_data+(i%ints_per_block)*sizeof(int)
     BF_Block_SetDirty(block);
 
-    if(i%ints_per_block == ints_per_block-1 && i!=buckets-1);
+    if((i%ints_per_block == ints_per_block-1) && i!=buckets-1);
       CALL_BF(BF_UnpinBlock(block));
   }
-  CALL_BF(BF_UnpinBlock(block));
 
+  CALL_BF(BF_UnpinBlock(block));
   CALL_BF(BF_CloseFile(file_desc));
 
   return HT_OK;
-
-  // int buckets_per_block = BF_BLOCK_SIZE/sizeof(int);
-  // int blocks = (buckets / buckets_per_block) + 1;
-  // num = -1;
-
-  // for (int i = 1; i <= blocks; i++){
-  //   BF_Block_Init(&block);
-  //   CALL_BF(BF_AllocateBlock(file_desc, block));
-  //   CALL_BF(BF_GetBlock(file_desc, i, block));
-  //   block_data = BF_Block_GetData(block);
-  //   for (int j = 0; i < buckets_per_block; i++){
-
-  //   }
-  // }
-
-  // int lol;
-  // memcpy(&lol, block_data, sizeof(int));
-  // printf("%d\n", lol);
-
 }
 
 HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
@@ -106,7 +86,7 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
 
   BF_Block_Init(&first_block);
   CALL_BF(BF_GetBlock(file_desc, 0, first_block));
-  first_block_data=BF_Block_GetData(first_block);
+  first_block_data = BF_Block_GetData(first_block);
   CALL_BF(BF_UnpinBlock(first_block));
 
   if(strcmp(first_block_data, "hash")!=0){      //check if the file is a hashfile
@@ -115,13 +95,14 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
   }
 
   for (int i = 0; i < MAX_OPEN_FILES; i++){
-    if (open_files[i] == -1){                   //find the first empty index in the files table
+    if (open_files[i] == -1){                   //find the first empty index in the open files table
       open_files[i] = file_desc;                //save the file_desc in the table
-      *indexDesc = i;                           //return the index
+      *indexDesc = i;                           //return the indexDesc
       return HT_OK;
     }
   }
   printf("You have reached maximum open files capacity\n");
+  
   return HT_ERROR;
 }
 
@@ -249,6 +230,38 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
 }
 
 HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
-  //insert code here
+  
+  int file_desc, buckets, records_per_block, bucket, hashcode, buckets_per_block;
+  BF_Block *first_block, *hash_block;
+  char *first_block_data, *hash_block_data;
+
+  file_desc = open_files[indexDesc];
+  if(file_desc == -1) {
+    printf("There is no open file in this index\n");
+    return HT_ERROR;
+  }
+
+  BF_Block_Init(&first_block);
+  CALL_BF(BF_GetBlock(file_desc, 0, first_block));
+  first_block_data = BF_Block_GetData(first_block);
+  CALL_BF(BF_UnpinBlock(first_block));
+
+  memcpy(&buckets, first_block_data + 5 * sizeof(char), sizeof(int));
+  memcpy(&records_per_block, first_block_data + 9 * sizeof(char), sizeof(int));
+
+  hashcode = id % buckets;
+  buckets_per_block = BF_BLOCK_SIZE / sizeof(int);
+
+  BF_Block_Init(&hash_block);
+  CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));
+  hash_block_data = BF_Block_GetData(hash_block);
+
+  memcpy(&bucket, hash_block_data+(hashcode%buckets_per_block)*sizeof(int), sizeof(int));
+
+  if(bucket == -1){
+    printf("There is no record with id = %d\n", id);
+    return HT_ERROR;
+  }
+
   return HT_OK;
 }
