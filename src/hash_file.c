@@ -36,16 +36,15 @@ HT_ErrorCode HT_CreateIndex(const char *filename, int buckets) {
   CALL_BF(BF_OpenFile(filename, &file_desc));
 
   // first block
-  BF_Block_Init(&first_block);        //at the first block we save information about the file
+  BF_Block_Init(&first_block);        // at the first block we save information about the file
   CALL_BF(BF_AllocateBlock(file_desc, first_block));
   CALL_BF(BF_GetBlock(file_desc, block_num, first_block));
   first_block_data = BF_Block_GetData(first_block);
 
-  memcpy(first_block_data, "hash", sizeof(5*sizeof(char)));       //the first 5 bites have the word "hash" so we know it's a hashfile
-  // num = buckets;
-  memcpy(first_block_data+5*sizeof(char), &buckets, sizeof(int));     //then we save the number of buckets we are using in the hashfile
-  records_per_block = (BF_BLOCK_SIZE-2*sizeof(int))/sizeof(Record);       //At each block we will save 2 (int) numbers, one for the number of records at the block and one in case we want to use overflow chains
-  memcpy(first_block_data+5*sizeof(char)+sizeof(int), &records_per_block, sizeof(int));  //in the end of the block we save the number of records we can save in a block
+  memcpy(first_block_data, "hash", sizeof(5*sizeof(char)));       // the first 5 bytes have the word "hash" so we know it's a hashfile
+  memcpy(first_block_data+5*sizeof(char), &buckets, sizeof(int));     // then we save the number of buckets we are using in the hashfile
+  records_per_block = (BF_BLOCK_SIZE-2*sizeof(int))/sizeof(Record);       // At each block we will save 2 (int) numbers, one for the number of records at the block and one in case we want to use overflow chains
+  memcpy(first_block_data+5*sizeof(char)+sizeof(int), &records_per_block, sizeof(int));  // in the end of the block we save the number of records we can save in a block
 
   BF_Block_SetDirty(first_block);
   CALL_BF(BF_UnpinBlock(first_block));
@@ -89,15 +88,15 @@ HT_ErrorCode HT_OpenIndex(const char *fileName, int *indexDesc){
   first_block_data = BF_Block_GetData(first_block);
   CALL_BF(BF_UnpinBlock(first_block));
 
-  if(strcmp(first_block_data, "hash")!=0){      //check if the file is a hashfile
+  if(strcmp(first_block_data, "hash")!=0){      // check if the file is a hashfile
     printf("This is not a hashfile\n");
     return HT_ERROR;
   }
 
   for (int i = 0; i < MAX_OPEN_FILES; i++){
-    if (open_files[i] == -1){                   //find the first empty index in the open files table
-      open_files[i] = file_desc;                //save the file_desc in the table
-      *indexDesc = i;                           //return the indexDesc
+    if (open_files[i] == -1){                   // find the first empty index in the open files table
+      open_files[i] = file_desc;                // save the file_desc in the table
+      *indexDesc = i;                           // return the indexDesc
       return HT_OK;
     }
   }
@@ -133,18 +132,18 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   }
 
   BF_Block_Init(&first_block);
-  CALL_BF(BF_GetBlock(file_desc, 0, first_block));      //first we take the imformations from the first block
+  CALL_BF(BF_GetBlock(file_desc, 0, first_block));      // first we take the information from the first block
   first_block_data=BF_Block_GetData(first_block);
   CALL_BF(BF_UnpinBlock(first_block));
 
   memcpy(&buckets, first_block_data+5*sizeof(char), sizeof(int));
-  memcpy(&records_per_block, first_block_data+9*sizeof(char), sizeof(int));        //sizeof(int)=4*sizeof(char)
+  memcpy(&records_per_block, first_block_data+9*sizeof(char), sizeof(int));        // sizeof(int)=4*sizeof(char)
 
   hashcode=record.id%buckets;
   buckets_per_block=BF_BLOCK_SIZE/sizeof(int);
 
   BF_Block_Init(&hash_block);
-  CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));         //(hashcode/buckets_per_block)+1 the number of the block that has the bucket with this hashcode
+  CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));         // (hashcode/buckets_per_block)+1 the number of the block that has the bucket with this hashcode
   hash_block_data=BF_Block_GetData(hash_block);
 
   memcpy(&bucket, hash_block_data+(hashcode%buckets_per_block)*sizeof(int), sizeof(int));
@@ -231,9 +230,9 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
 
 HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
   
-  int file_desc, buckets, records_per_block, bucket, hashcode, buckets_per_block;
-  BF_Block *first_block, *hash_block;
-  char *first_block_data, *hash_block_data;
+  int file_desc, buckets, records_per_block, bucket, hashcode, buckets_per_block, next_block, number_of_records, record_id;
+  BF_Block *first_block, *hash_block, *block, *dirty_block;
+  char *first_block_data, *hash_block_data, *block_data, *current_record, *record_to_delete, *last_record;
 
   file_desc = open_files[indexDesc];
   if(file_desc == -1) {
@@ -253,15 +252,69 @@ HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
   buckets_per_block = BF_BLOCK_SIZE / sizeof(int);
 
   BF_Block_Init(&hash_block);
-  CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));
+  CALL_BF(BF_GetBlock(file_desc, (hashcode / buckets_per_block)  +1, hash_block));
   hash_block_data = BF_Block_GetData(hash_block);
+  CALL_BF(BF_UnpinBlock(hash_block));
 
-  memcpy(&bucket, hash_block_data+(hashcode%buckets_per_block)*sizeof(int), sizeof(int));
+  memcpy(&bucket, hash_block_data + (hashcode % buckets_per_block) * sizeof(int), sizeof(int));
 
   if(bucket == -1){
     printf("There is no record with id = %d\n", id);
     return HT_ERROR;
   }
+
+  BF_Block_Init(&block);
+  next_block = bucket;
+
+  do {
+    // finding next block of records with the current hashcode
+    CALL_BF(BF_GetBlock(file_desc, next_block, block));
+    block_data = BF_Block_GetData(block);
+    memcpy(&next_block, block_data, sizeof(int));
+    block_data += sizeof(int);
+
+    // searching all the records in the current block
+    memcpy(&number_of_records, block_data, sizeof(int));
+    block_data += sizeof(int);
+    current_record = block_data;
+    for(int i = 0; i < number_of_records; i++, current_record += sizeof(Record)){
+      memcpy(&record_id, current_record, sizeof(int));
+      // printf("record id = %d\n", record_id);
+      if(record_id == id) {
+        printf("Found record with id = %d\n", id);
+        record_to_delete = current_record;                // saving its place to delete later
+        dirty_block = block;                              // also saving block to set dirty
+      }
+    }
+    if(next_block != -1)
+      CALL_BF(BF_UnpinBlock(block));
+  } while(next_block != -1);
+
+  // finding the last record of the last block visited
+  // and inserting it in the place of the one we want to delete
+  current_record -= sizeof(Record);
+  last_record = current_record;
+  memcpy(record_to_delete, last_record, sizeof(Record));
+  BF_Block_SetDirty(dirty_block);
+
+  // changing the number_of_records in the last block so the deleted one can be overwritten
+  block_data = BF_Block_GetData(block);
+  memcpy(&number_of_records, block_data + sizeof(int), sizeof(int));
+  // printf("number of records = %d\n", number_of_records);
+  number_of_records--;
+  memcpy(block_data + sizeof(int), &number_of_records, sizeof(int));
+  BF_Block_SetDirty(block);
+  CALL_BF(BF_UnpinBlock(block));
+
+  // for checking
+
+  // memcpy(&number_of_records, block_data + sizeof(int), sizeof(int));
+  // printf("new number of records = %d\n", number_of_records);
+  // int last_id, new_id;
+  // memcpy(&last_id, last_record, sizeof(int));
+  // memcpy(&new_id, record_to_delete, sizeof(int));
+  // printf("last id = %d\n", last_id);
+  // printf("new id = %d\n", new_id);
 
   return HT_OK;
 }
