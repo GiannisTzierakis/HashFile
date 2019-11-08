@@ -4,4 +4,4 @@
 float hash_func(id,mod){
     id % mod;
     return ;
-}
+}//gewrgergg43wgrwwr
