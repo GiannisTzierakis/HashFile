@@ -84,11 +84,13 @@ int main(void){
   memcpy(record1.name, "Giorgos", sizeof(record2.name));
   memcpy(record1.surname, "Michas", sizeof(record2.surname));
   memcpy(record1.city, "Athens", sizeof(record2.city));
-
+  
   CALL_OR_DIE(HT_InsertEntry(0, record1));
   CALL_OR_DIE(HT_InsertEntry(0, record2));
-  CALL_OR_DIE(HT_DeleteEntry(0, 10));
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
+  CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
   CALL_OR_DIE(HT_CloseFile(indexDesc));
+
 
   return 0;
 }
