@@ -87,6 +87,10 @@ int main(void){
   
   CALL_OR_DIE(HT_InsertEntry(0, record1));
   CALL_OR_DIE(HT_InsertEntry(0, record2));
+
+  // int *NULL_ID = NULL;
+  // CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL_ID));
+
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
   CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
   CALL_OR_DIE(HT_CloseFile(indexDesc));

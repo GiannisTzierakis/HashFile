@@ -243,7 +243,7 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
   memcpy(&buckets, first_block_data + 5 * sizeof(char), sizeof(int));
   memcpy(&records_per_block, first_block_data + 9 * sizeof(char), sizeof(int));        // sizeof(int)=4*sizeof(char)
 
-  hashcode = *id % buckets;
+  hashcode = *id % buckets;                           // <-- if(id !- NULL)
   buckets_per_block = BF_BLOCK_SIZE/sizeof(int);
 
   BF_Block_Init(&hash_block);
@@ -292,7 +292,7 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
       }
     }
   }
-  BF_UnpinBlock(block);
+  BF_UnpinBlock(block);           // <-- left unpinned except last one?
 
   return HT_OK;
 }
