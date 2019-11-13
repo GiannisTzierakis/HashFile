@@ -81,14 +81,16 @@ int main(void){
 
   Record record2;
   record2.id=23;      // 23 % 13 = 10
-  memcpy(record1.name, "Giorgos", sizeof(record2.name));
-  memcpy(record1.surname, "Michas", sizeof(record2.surname));
-  memcpy(record1.city, "Athens", sizeof(record2.city));
-  
+  memcpy(record2.name, "Kostas", sizeof(record2.name));
+  memcpy(record2.surname, "Skordakis", sizeof(record2.surname));
+  memcpy(record2.city, "Larisa", sizeof(record2.city));
+
+  int num=10;
+
   CALL_OR_DIE(HT_InsertEntry(0, record1));
   CALL_OR_DIE(HT_InsertEntry(0, record2));
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
-  CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+//  CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
   CALL_OR_DIE(HT_CloseFile(indexDesc));
 
 

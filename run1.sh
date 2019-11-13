@@ -1,3 +1,3 @@
-make ht1
+make hp
 ./build/runner
 rm  *.db
