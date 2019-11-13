@@ -223,83 +223,6 @@ HT_ErrorCode HT_InsertEntry(int indexDesc, Record record) {
   return HT_OK;
 }
 
-// HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
-//   int file_desc, buckets, records_per_block, hashcode,record_id;
-//   int bucket, buckets_per_block, number_of_records, next_block; // there were too many so I split them
-//   BF_Block *first_block, *hash_block, *block;
-//   char *first_block_data, *hash_block_data, *block_data, *current_record;
-//
-//   file_desc = open_files[indexDesc];
-//   if(file_desc == -1){
-//     printf("There is no open file in this index\n");
-//     return HT_ERROR;
-//   }
-//
-  // BF_Block_Init(&first_block);
-  // CALL_BF(BF_GetBlock(file_desc, 0, first_block));      // first we take the information from the first block
-  // first_block_data = BF_Block_GetData(first_block);
-  // CALL_BF(BF_UnpinBlock(first_block));
-//
-//   memcpy(&buckets, first_block_data + 5 * sizeof(char), sizeof(int));
-//   memcpy(&records_per_block, first_block_data + 9 * sizeof(char), sizeof(int));        // sizeof(int)=4*sizeof(char)
-//
-//   if(id!=NULL)
-//     hashcode = *id % buckets;
-//   buckets_per_block = BF_BLOCK_SIZE/sizeof(int);
-//
-//   BF_Block_Init(&hash_block);
-//   CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));         // (hashcode/buckets_per_block)+1 the number of the block that has the bucket with this hashcode
-//   hash_block_data = BF_Block_GetData(hash_block);
-//
-//   memcpy(&bucket, hash_block_data + (hashcode % buckets_per_block)*sizeof(int), sizeof(int));
-//
-//   if(bucket == -1){
-//     printf("There is no record with id = %d\n", *id);
-//     return HT_ERROR;
-//   }
-//   memcpy(surname, current_record, 20);
-//
-//   BF_Block_Init(&block);
-//   next_block = bucket;
-//
-//   char name[15];
-//   char surname[20];
-//   char city[20];
-//
-//   while(next_block!=-1){
-//     // finding next block of records with the current hashcode
-//     CALL_BF(BF_GetBlock(file_desc, next_block, block));
-//     block_data = BF_Block_GetData(block);
-//     memcpy(&next_block, block_data, sizeof(int));
-//     block_data += sizeof(int);
-//     memcpy(&number_of_records, block_data, sizeof(int));
-//     block_data += sizeof(int);
-//
-//     current_record = block_data;
-//     for(int i = 0; i < number_of_records; i++){
-//
-//       memcpy(&record_id, current_record, sizeof(int));
-//       current_record += sizeof(int);
-//       memcpy(name, current_record, 15);
-//       current_record += 15;
-//       memcpy(surname, current_record, 20);
-//       current_record += 20;
-//       memcpy(city, current_record, 20);
-//       current_record += 20;
-//
-//       if(id == NULL) {
-//         printf("%d, %s, %s, %s\n", record_id, name, surname, city);
-//       }
-//       else if(record_id == *id)
-//         printf("%d ,%s, %s, %s\n", record_id, name, surname, city);
-//
-//     }
-//   }
-//   BF_UnpinBlock(block);
-//
-//   return HT_OK;
-// }
-
 HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
   int file_desc, buckets, records_per_block, hashcode, record_id, num_of_hashblocks;
   int bucket, buckets_per_block, number_of_records, next_block; // there were too many so I split them
@@ -322,27 +245,6 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
   memcpy(&buckets, first_block_data + 5 * sizeof(char), sizeof(int));
   memcpy(&records_per_block, first_block_data + 9 * sizeof(char), sizeof(int));        // sizeof(int)=4*sizeof(char)
 
-<<<<<<< HEAD
-=======
-  hashcode = *id % buckets;                           // <-- if(id !- NULL)
-  buckets_per_block = BF_BLOCK_SIZE/sizeof(int);
-
-  BF_Block_Init(&hash_block);
-  CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));         // (hashcode/buckets_per_block)+1 the number of the block that has the bucket with this hashcode
-  hash_block_data = BF_Block_GetData(hash_block);
-  
-  memcpy(&bucket, hash_block_data + (hashcode % buckets_per_block)*sizeof(int), sizeof(int));
-
-  BF_Block_Init(&block);
-  if(bucket == -1){
-    printf("There is no record with id = %d\n", *id);
-    return HT_ERROR;
-  }
-  
-  BF_Block_Init(&block);
-  next_block = bucket;
-
->>>>>>> d366600b7929c93a7bb339a12d7825c95523985f
   char name[15];
   char surname[20];
   char city[20];
@@ -389,15 +291,11 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
     }
     return HT_OK;
   }
-<<<<<<< HEAD
   else {
     hashcode = *id % buckets;
     BF_Block_Init(&hash_block);
     CALL_BF(BF_GetBlock(file_desc, (hashcode/buckets_per_block)+1, hash_block));         // (hashcode/buckets_per_block)+1 the number of the block that has the bucket with this hashcode
     hash_block_data = BF_Block_GetData(hash_block);
-=======
-  BF_UnpinBlock(block);           // <-- left unpinned except last one?
->>>>>>> d366600b7929c93a7bb339a12d7825c95523985f
 
     memcpy(&bucket, hash_block_data + (hashcode % buckets_per_block)*sizeof(int), sizeof(int));
 
@@ -430,7 +328,7 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
     while(next_block!=-1);
     printf("There is no record with id = %d\n", *id);
   }
-  return HT_ERROR;
+  return HT_OK;
 }
 
 HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
