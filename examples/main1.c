@@ -89,17 +89,22 @@ int main(void){
 
   CALL_OR_DIE(HT_InsertEntry(0, record1));
   CALL_OR_DIE(HT_InsertEntry(0, record2));
+
+  printf("Printing all records\n");
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
 
+  printf("Printing record with id = %d\n", record1.id);
   CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
 
+  printf("Printing record with id = %d\n", record2.id);
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record2.id));
+
+  printf("Deleting record with id = %d\n", record1.id);
   CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
 
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
-
+  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record2.id));
+  CALL_OR_DIE(HT_DeleteEntry(0, record2.id));
 
   CALL_OR_DIE(HT_CloseFile(indexDesc));
-
-
   return 0;
 }

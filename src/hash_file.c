@@ -333,8 +333,8 @@ HT_ErrorCode HT_PrintAllEntries(int indexDesc, int *id) {
 
 HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
 
-  int file_desc, buckets, records_per_block, bucket, hashcode, buckets_per_block, next_block, number_of_records, record_id;
-  BF_Block *first_block, *hash_block, *block, *dirty_block;
+  int file_desc, buckets, records_per_block, bucket, hashcode, buckets_per_block, next_block, number_of_records, record_id, found_flag, current_block, delete_index, dirty_block, blocks;
+  BF_Block *first_block, *hash_block, *block, *last_block;
   char *first_block_data, *hash_block_data, *block_data, *current_record, *record_to_delete, *last_record;
 
   file_desc = open_files[indexDesc];
@@ -368,11 +368,13 @@ HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
 
   BF_Block_Init(&block);
   next_block = bucket;
+  found_flag = 0;
 
   do {
     // finding next block of records with the current hashcode
     CALL_BF(BF_GetBlock(file_desc, next_block, block));
     block_data = BF_Block_GetData(block);
+    current_block = next_block;
     memcpy(&next_block, block_data, sizeof(int));
     block_data += sizeof(int);
 
@@ -382,42 +384,48 @@ HT_ErrorCode HT_DeleteEntry(int indexDesc, int id) {
     current_record = block_data;
     for(int i = 0; i < number_of_records; i++, current_record += sizeof(Record)){
       memcpy(&record_id, current_record, sizeof(int));
-      // printf("record id = %d\n", record_id);
       if(record_id == id) {
-        printf("Found record with id = %d\n", id);
-        record_to_delete = current_record;                // saving its place to delete later
-        dirty_block = block;                              // also saving block to set dirty
+        delete_index = i;                // saving the record's place to modify later
+        dirty_block = current_block;     // also saving block to set dirty
+        found_flag = 1;                  // id found so no need to check the remaining records
+        break;
       }
     }
-    if(next_block != -1)
+    // if(!found_flag)
       CALL_BF(BF_UnpinBlock(block));
-  } while(next_block != -1);
+  } while(next_block != -1 || found_flag == 0);
 
-  // finding the last record of the last block visited
-  // and inserting it in the place of the one we want to delete
-  current_record -= sizeof(Record);
-  last_record = current_record;
+  if(!found_flag){
+    printf("There is no record with id = %d\n", id);
+    return HT_ERROR;
+  }
+
+  // finding the last record of the last block
+  CALL_BF(BF_GetBlockCounter(file_desc, &blocks));
+  BF_Block_Init(&last_block);
+  CALL_BF(BF_GetBlock(file_desc, blocks-1, last_block));
+  block_data = BF_Block_GetData(last_block);
+  block_data += sizeof(int);
+  memcpy(&number_of_records, block_data, sizeof(int));
+  last_record = block_data += sizeof(int) + (number_of_records - 1) * sizeof(Record);
+
+  // changing record to delete and setting the block to dirty
+  CALL_BF(BF_GetBlock(file_desc, dirty_block, block));
+  record_to_delete = BF_Block_GetData(block);
+  record_to_delete += (2 * sizeof(int)) + (delete_index * sizeof(Record));
   memcpy(record_to_delete, last_record, sizeof(Record));
-  BF_Block_SetDirty(dirty_block);
-
-  // changing the number_of_records in the last block so the deleted one can be overwritten
-  block_data = BF_Block_GetData(block);
-  memcpy(&number_of_records, block_data + sizeof(int), sizeof(int));
-  // printf("number of records = %d\n", number_of_records);
-  number_of_records--;
-  memcpy(block_data + sizeof(int), &number_of_records, sizeof(int));
   BF_Block_SetDirty(block);
   CALL_BF(BF_UnpinBlock(block));
 
-  // for checking
-
-  // memcpy(&number_of_records, block_data + sizeof(int), sizeof(int));
-  // printf("new number of records = %d\n", number_of_records);
-  // int last_id, new_id;
-  // memcpy(&last_id, last_record, sizeof(int));
-  // memcpy(&new_id, record_to_delete, sizeof(int));
-  // printf("last id = %d\n", last_id);
-  // printf("new id = %d\n", new_id);
+  // changing the number of records in the last block so the last record can be overwritten
+  block_data = BF_Block_GetData(last_block);
+  memcpy(&number_of_records, block_data + sizeof(int), sizeof(int));
+  number_of_records--;
+  memcpy(block_data + sizeof(int), &number_of_records, sizeof(int));
+  last_record = block_data + (2 * sizeof(int)) + (number_of_records) * sizeof(Record);
+  memset(last_record, -1, sizeof(int));
+  BF_Block_SetDirty(last_block);
+  CALL_BF(BF_UnpinBlock(last_block));
 
   return HT_OK;
 }
