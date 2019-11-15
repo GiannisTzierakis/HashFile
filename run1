@@ -1,0 +1,3 @@
+make ht1
+./build/runner
+rm data*
