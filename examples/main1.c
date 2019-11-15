@@ -7,7 +7,7 @@
 
 #define RECORDS_NUM 1700 // you can change it if you want
 #define BUCKETS_NUM 13  // you can change it if you want
-#define FILE_NAME "data.db"
+#define FILE_NAME "dataA.db"
 
 int *open_files;
 
@@ -65,46 +65,43 @@ const char* cities[] = {
 
 int main(void){
 
-  int indexDesc;
+  int indexDesc, i;
 
   BF_Init(LRU);
   CALL_OR_DIE(HT_Init());
 
-  CALL_OR_DIE(HT_CreateIndex(FILE_NAME,BUCKETS_NUM));
-  CALL_OR_DIE(HT_OpenIndex(FILE_NAME, &indexDesc));
+  char* filename = strdup(FILE_NAME);
 
-  Record record1;
-  record1.id=10;
-  memcpy(record1.name, "Giorgos", sizeof(record1.name));
-  memcpy(record1.surname, "Michas", sizeof(record1.surname));
-  memcpy(record1.city, "Athens", sizeof(record1.city));
+  // we try to create and open 21 files
+  for (i = 0; i < 21; i++, filename[4]++) { // we increment the 5th character
+    CALL_OR_DIE(HT_CreateIndex(filename,BUCKETS_NUM));
+    CALL_OR_DIE(HT_OpenIndex(filename, &indexDesc)); // at the 21th file we should get an error message
+    printf("%s\n", filename);
+  }
+  filename[4]--;
 
-  Record record2;
-  record2.id=23;      // 23 % 13 = 10
-  memcpy(record2.name, "Kostas", sizeof(record2.name));
-  memcpy(record2.surname, "Skordakis", sizeof(record2.surname));
-  memcpy(record2.city, "Larisa", sizeof(record2.city));
+  for(i=0 ; i < 20 ; i++)
+    printf("%d ", open_files[i]);
+  printf("\n");
 
-  int num=10;
+  CALL_OR_DIE(HT_CloseFile(5)); // we close the 6th file of the openfiles table
 
-  CALL_OR_DIE(HT_InsertEntry(0, record1));
-  CALL_OR_DIE(HT_InsertEntry(0, record2));
+  for(i=0 ; i < 20 ; i++)
+    printf("%d ", open_files[i]);
+  printf("\n");
 
-  printf("Printing all records\n");
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, NULL));
+  CALL_OR_DIE(HT_OpenIndex(filename, &indexDesc)); // we try to open the 21st file that was created
 
-  printf("Printing record with id = %d\n", record1.id);
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record1.id));
+  for(i=0 ; i < 20 ; i++)
+    printf("%d ", open_files[i]);
+  printf("\n");
 
-  printf("Printing record with id = %d\n", record2.id);
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record2.id));
+  for(i=0 ; i < 20 ; i++)   //close all files
+    CALL_OR_DIE(HT_CloseFile(i));
 
-  printf("Deleting record with id = %d\n", record1.id);
-  CALL_OR_DIE(HT_DeleteEntry(0, record1.id));
+  for(i=0 ; i < 20 ; i++)
+    printf("%d ", open_files[i]);
+  printf("\n");
 
-  CALL_OR_DIE(HT_PrintAllEntries(indexDesc, &record2.id));
-  CALL_OR_DIE(HT_DeleteEntry(0, record2.id));
-
-  CALL_OR_DIE(HT_CloseFile(indexDesc));
   return 0;
 }

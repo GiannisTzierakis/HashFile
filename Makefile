@@ -9,3 +9,7 @@ bf:
 ht1:
 	@echo " Compile ht_main ...";
 	gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/main1.c ./src/hash_file.c -lbf -o ./build/runner -O2
+
+ht2:
+	@echo " Compile ht_main ...";
+	gcc -I ./include/ -L ./lib/ -Wl,-rpath,./lib/ ./examples/main2.c ./src/hash_file.c -lbf -o ./build/runner -O2
